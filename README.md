@@ -1,3 +1,12 @@
+---
+title: Paper Assistant Backend
+emoji: 📄
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+---
+
 # 🚀 Enterprise Knowledge Assistant
 
 <p align="center">
