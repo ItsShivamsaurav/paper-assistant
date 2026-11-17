@@ -10,10 +10,16 @@ from frontend.auth import get_auth_headers
 logger = logging.getLogger(__name__)
 
 
-BASE_URL = os.getenv(
-    "BACKEND_URL",
-    "http://127.0.0.1:8000",
-)
+def get_backend_url() -> str:
+    try:
+        if "BACKEND_URL" in st.secrets:
+            return st.secrets["BACKEND_URL"].rstrip("/")
+    except Exception:
+        pass
+    return os.getenv("BACKEND_URL", "http://127.0.0.1:8000").rstrip("/")
+
+BASE_URL = get_backend_url()
+
 DOCUMENTS_CACHE_KEY = "_documents_cache"
 DOCUMENTS_CACHE_TTL_SECONDS = 5
 
