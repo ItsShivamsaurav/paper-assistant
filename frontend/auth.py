@@ -1,8 +1,17 @@
 import requests
+import os
 import streamlit as st
 
 
-BACKEND_URL = "http://127.0.0.1:8000"
+def _get_backend_url() -> str:
+    try:
+        if "BACKEND_URL" in st.secrets:
+            return str(st.secrets["BACKEND_URL"]).strip().rstrip("/")
+    except Exception:
+        pass
+    return os.getenv("BACKEND_URL", "http://127.0.0.1:8000").strip().rstrip("/")
+
+BACKEND_URL = _get_backend_url()
 
 
 def _reset_user_session_state():
