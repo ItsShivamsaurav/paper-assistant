@@ -1,12 +1,16 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
 
 
 class Settings(BaseSettings):
 
     # Vector Database
 
-    qdrant_host: str
-    qdrant_port: int
+    # qdrant_host: str = "localhost"
+    # qdrant_port: int = 6333
+
+    qdrant_url: str | None = None
+    qdrant_api_key: str | None = None
     collection_name: str
     database_url: str = "sqlite:///./data/app.db"
 
