@@ -1,33 +1,9 @@
-# FROM python:3.13-slim
-
-# WORKDIR /app
-
-# ENV PYTHONDONTWRITEBYTECODE=1
-# ENV PYTHONUNBUFFERED=1
-
-# COPY requirements.docker.txt .
-
-# RUN pip install --no-cache-dir --upgrade pip \
-#     && pip install --no-cache-dir -r requirements.docker.txt
-
-# COPY app ./app
-# COPY main.py .
-# COPY scripts ./scripts
-
-# RUN mkdir -p /app/data
-
-# EXPOSE 8000
-
-# CMD ["sh", "-c", "python -m app.database.init_db && python -m scripts.init_qdrant && uvicorn main:app --host 0.0.0.0 --port 8000"]
-
-
 FROM python:3.13-slim
 
 WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV HF_HOME=/app/.cache/huggingface
 
 COPY requirements.docker.txt .
 
@@ -38,10 +14,8 @@ COPY app ./app
 COPY main.py .
 COPY scripts ./scripts
 
-# Make /app writable so SQLite (/app/data) and Hugging Face model cache work under non-root UID 1000
-RUN mkdir -p /app/data /app/.cache/huggingface \
-    && chmod -R 777 /app/data /app/.cache
+RUN mkdir -p /app/data
 
-EXPOSE 7860
+EXPOSE 8000
 
-CMD ["sh", "-c", "python -m app.database.init_db && python -m scripts.init_qdrant && uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860}"]
+CMD ["sh", "-c", "python -m app.database.init_db && python -m scripts.init_qdrant && uvicorn main:app --host 0.0.0.0 --port 8000"]
