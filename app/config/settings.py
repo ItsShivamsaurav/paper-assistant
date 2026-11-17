@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     openrouter_api_key: str | None = None
     # groq_api_key: str | None = None
 
+    gemini_api_key: str
+
     # Authentication
 
     jwt_secret_key: str

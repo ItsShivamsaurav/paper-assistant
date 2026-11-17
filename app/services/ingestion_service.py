@@ -1,29 +1,29 @@
-from app.privacy.classifier import DataClassification
-from app.utils.file_hash import calculate_file_hash
-from uuid import uuid4
-from app.utils.logger import logger
-from qdrant_client.models import PointStruct
-from qdrant_client.models import Filter, FieldCondition, MatchValue
 from pathlib import Path
+from uuid import uuid4
+
+from qdrant_client.models import FieldCondition, Filter, MatchValue, PointStruct
 
 from app.chunking.chunker import split_documents
+from app.config.settings import settings
 from app.embeddings.embedding_model import get_embedding_model
 from app.loaders.pdf_loader import load_pdf
-from app.config.settings import settings
+from app.privacy.classifier import DataClassification
+from app.utils.file_hash import calculate_file_hash
+from app.utils.logger import logger
 from app.vectorstore.client import get_qdrant_client
+
+EMBEDDING_BATCH_SIZE = 50
 
 
 def ingest_pdf(
     pdf_path: str,
     owner_id: int,
 ) -> None:
-
     """
-    Load a PDF, split it into chunks, generate embeddings,
+    Load a PDF, split it into chunks, generate batched embeddings,
     and store them in Qdrant with document ownership
     and data classification metadata.
     """
-
     file_hash = calculate_file_hash(pdf_path)
     filename = Path(pdf_path).name
     classification = DataClassification.INTERNAL.value
@@ -48,9 +48,7 @@ def ingest_pdf(
     )
 
     if existing_points:
-        logger.warning(
-            "PDF already indexed. Skipping....."
-        )
+        logger.warning("PDF already indexed. Skipping.....")
         return
 
     logger.info("Loading PDF.....")
@@ -68,40 +66,41 @@ def ingest_pdf(
         return
 
     embedding_model = get_embedding_model()
+    logger.info("Generating embeddings for %s chunks...", len(chunks))
 
-    logger.info("Generating embeddings...")
+    total_stored = 0
 
-    points = []
+    for i in range(0, len(chunks), EMBEDDING_BATCH_SIZE):
+        batch_chunks = chunks[i : i + EMBEDDING_BATCH_SIZE]
+        texts = [chunk.page_content for chunk in batch_chunks]
 
-    for chunk in chunks:
-        vector = embedding_model.embed_query(
-            chunk.page_content
-        )
+        # Single batched API call instead of 1 request per chunk
+        vectors = embedding_model.embed_documents(texts)
 
-        points.append(
+        points = [
             PointStruct(
                 id=str(uuid4()),
                 vector=vector,
                 payload={
                     "text": chunk.page_content,
                     "source": filename,
-                    "page": chunk.metadata["page"],
+                    "page": chunk.metadata.get("page", 0),
                     "file_hash": file_hash,
                     "owner_id": owner_id,
                     "classification": classification,
                 },
             )
+            for chunk, vector in zip(batch_chunks, vectors)
+        ]
+
+        client.upsert(
+            collection_name=settings.collection_name,
+            points=points,
         )
-
-    logger.info("Uploading vectors to Qdrant...")
-
-    client.upsert(
-        collection_name=settings.collection_name,
-        points=points,
-    )
+        total_stored += len(points)
 
     logger.info(
         "Successfully stored %s chunks for user %s.",
-        len(points),
+        total_stored,
         owner_id,
     )
